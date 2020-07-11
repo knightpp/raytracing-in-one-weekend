@@ -3,8 +3,8 @@ use super::*;
 pub struct Camera {
     origin: Point3,
     lower_left_corner: Point3,
-    horizontal: Vec3,
-    vertical: Vec3,
+    horizontal: Point3,
+    vertical: Point3,
 }
 
 impl Camera {

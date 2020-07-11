@@ -5,20 +5,21 @@ mod sphere;
 mod traits;
 mod vec3;
 
+type Color = Vec3<vec3::Color>;
+type Point3 = Vec3<vec3::Point3>;
+
 use camera::*;
 use material::*;
-use ray::Ray;
-use sphere::*;
-use traits::*;
-use vec3::Vec3;
-type Color = Vec3;
-type Point3 = Vec3;
 use rand::random;
+use ray::Ray;
 use rayon::prelude::*;
+use sphere::*;
 use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;
 use std::sync::Arc;
+use traits::*;
+use vec3::Vec3;
 
 fn random_range(min: f64, max: f64) -> f64 {
     min + (max - min) * rand::random::<f64>()
@@ -27,9 +28,9 @@ fn random_range(min: f64, max: f64) -> f64 {
 fn main() {
     let mut file = BufWriter::with_capacity(8 * 1024 * 1024, File::create("image.ppm").unwrap());
     const MAX_DEPTH: u32 = 50;
-    const aspect_ratio: f64 = 16.0 / 9.0;
+    const ASPECT_RATIO: f64 = 16.0 / 9.0;
     const width: usize = 1024;
-    const height: usize = (width as f64 / aspect_ratio) as usize;
+    const height: usize = (width as f64 / ASPECT_RATIO) as usize;
     const samples_per_pixel: u32 = 100;
     file.write_fmt(format_args!("P3\n{} {}\n255\n", width, height))
         .unwrap();

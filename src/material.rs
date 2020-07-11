@@ -61,11 +61,9 @@ pub struct Dielectric {
     ref_idx: f64,
 }
 
-impl Dielectric{
-    pub fn new(ref_idx : f64) -> Self{
-        Dielectric{
-            ref_idx
-        }
+impl Dielectric {
+    pub fn new(ref_idx: f64) -> Self {
+        Dielectric { ref_idx }
     }
 }
 impl Material for Dielectric {
@@ -78,20 +76,15 @@ impl Material for Dielectric {
     ) -> bool {
         *attenuation = (1, 1, 1).into();
         let etai_over_etat = if rec.front_face {
-            1.0 /self.ref_idx
+            1.0 / self.ref_idx
         } else {
             self.ref_idx
         };
         let unit_direction = r_in.direction().unit();
-        
-        
-        
-
-
 
         let cos_theta = f64::min((-unit_direction).dot(&rec.normal), 1.0);
-        let sin_theta = (1.0 - cos_theta*cos_theta).sqrt();
-        if etai_over_etat * sin_theta > 1.0{
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+        if etai_over_etat * sin_theta > 1.0 {
             let reflected = unit_direction.reflect(&rec.normal);
             *scattered = Ray::new(rec.p, reflected);
             return true;

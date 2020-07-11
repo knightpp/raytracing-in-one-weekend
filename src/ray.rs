@@ -2,17 +2,17 @@ use crate::{Color, Point3, Vec3};
 #[derive(Debug, Default)]
 pub struct Ray {
     origin: Point3,
-    direction: Vec3,
+    direction: Point3,
 }
 
 impl Ray {
-    pub fn new(origin: Point3, direction: Vec3) -> Self {
+    pub fn new(origin: Point3, direction: Point3) -> Self {
         Ray { origin, direction }
     }
     pub fn origin(&self) -> &Point3 {
         &self.origin
     }
-    pub fn direction(&self) -> &Vec3 {
+    pub fn direction(&self) -> &Point3 {
         &self.direction
     }
     pub fn at(&self, t: f64) -> Point3 {
