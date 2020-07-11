@@ -89,6 +89,12 @@ impl Material for Dielectric {
             *scattered = Ray::new(rec.p, reflected);
             return true;
         }
+        let reflect_prob = schlick(cos_theta, etai_over_etat);
+        if random::<f64>() < reflect_prob {
+            let reflected = unit_direction.reflect(&rec.normal);
+            *scattered = Ray::new(rec.p, reflected);
+            return true;
+        }
 
         let refracted = unit_direction.refract(&rec.normal, etai_over_etat);
         *scattered = Ray::new(rec.p, refracted);

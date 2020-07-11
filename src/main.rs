@@ -29,41 +29,44 @@ fn main() {
     let mut file = BufWriter::with_capacity(8 * 1024 * 1024, File::create("image.ppm").unwrap());
     const MAX_DEPTH: u32 = 50;
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    const width: usize = 1024;
+    const width: usize = 512;
     const height: usize = (width as f64 / ASPECT_RATIO) as usize;
     const samples_per_pixel: u32 = 100;
     file.write_fmt(format_args!("P3\n{} {}\n255\n", width, height))
         .unwrap();
 
-    let mut world = Vec::new();
-    world.push(Sphere::new(
-        (0, 0, -1).into(),
-        0.5,
-        Arc::new(Lambertian::new((0.7, 0.3, 0.3).into())),
-    ));
+    //let glass = Arc::new(Dielectric::new(1.5));
+    let mut world : Vec<Sphere> = Vec::new();
 
     world.push(Sphere::new(
-        (1, 0, -1).into(),
+        (0.0, 0.0, -1.0).into(),
         0.5,
-        Arc::new(Metal::new((0.8, 0.6, 0.2).into(), 0.3)),
+        Arc::new(Lambertian::new((0.1, 0.2, 0.5).into())),
     ));
-    // world.push(Sphere::new(
-    //     (-1, 0, -1).into(),
-    //     0.5,
-    //     Arc::new(Metal::new((0.8, 0.8, 0.8).into(), 0.9)),
-    // ));
-
-    world.push(Sphere::new(
-        (-1, 0, -1).into(),
-        0.5,
-        Arc::new(Dielectric::new(1.5)),
-    ));
-
     world.push(Sphere::new(
         (0., -100.5, -1.).into(),
         100.0,
         Arc::new(Lambertian::new((0.8, 0.8, 0.0).into())),
     ));
+
+    // world.push(Sphere::new(
+    //     (1, 0, -1).into(),
+    //     0.5,
+    //     Arc::new(Metal::new((0.8, 0.6, 0.2).into(), 0.3)),
+    // ));
+    
+    // world.push(Sphere::new(
+    //     (-1, 0, -1).into(),
+    //     0.5,
+    //     Arc::new(Dielectric::new(1.5)),
+    // ));
+    // world.push(Sphere::new(
+    //     (-1, 0, -1).into(),
+    //     -0.45,
+    //     Arc::new(Dielectric::new(1.5)),
+    // ));
+
+
 
     let cam = Camera::new();
     // for j in (0..height).into_iter().rev() {
@@ -151,19 +154,25 @@ fn ray_color(ray: &Ray, world: &impl Hittable, depth: u32) -> Color {
     }
     let mut rec = HitRecord::default();
     if world.hit(ray, 0.001, f64::INFINITY, &mut rec) {
-        let mut scattered = Ray::default();
-        let mut attenuation = Color::default();
-        let m = rec.material.take();
-        if m.unwrap()
-            .scatter(ray, &mut rec, &mut attenuation, &mut scattered)
-        {
-            return attenuation * ray_color(&scattered, world, depth - 1);
-        }
-        return Color::zeroed();
+        // let mut scattered = Ray::default();
+        // let mut attenuation = Color::default();
+        // let m = rec.material.as_ref().map(|x|x.clone()).unwrap();
+        // if m.scatter(ray, &mut rec, &mut attenuation, &mut scattered)
+        // {
+        //     return attenuation * ray_color(&scattered, world, depth - 1);
+        // }
+        return 0.5 * (rec.normal.as_color() + (1,1,1).into());
+        //return Color::zeroed();
     }
     let unit_dir = ray.direction().unit();
     let t = 0.5 * (unit_dir.y + 1.0);
-    (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
+    ((1.0 - t) * Color::new(1.0, 1.0, 1.0)) + (t * Color::new(0.5, 0.7, 1.0))
+}
+
+fn schlick(cosine : f64, ref_idx : f64) -> f64{
+    let r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+    let r0 = r0 * r0;
+    r0 + (1.0 - r0) * (1.0 - cosine).powf(5.0)
 }
 
 fn clamp<T>(val: T, min: T, max: T) -> T

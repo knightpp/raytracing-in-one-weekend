@@ -258,6 +258,28 @@ where
         r_out_parallel + r_out_perp
     }
 }
+
+impl Vec3<Color>{
+    pub fn as_point3(self) -> Vec3<Point3>{
+        Vec3{
+            marker: PhantomData,
+            x: self.x,
+            y: self.y,
+            z: self.z,
+        }
+    }
+}
+impl Vec3<Point3>{
+    pub fn as_color(self) -> Vec3<Color>{
+        Vec3{
+            marker: PhantomData,
+            x: self.x,
+            y: self.y,
+            z: self.z,
+        }
+    }
+}
+
 impl<T> std::fmt::Display for Vec3<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} {} {}", self.x, self.y, self.z)

@@ -9,6 +9,16 @@ pub struct HitRecord {
 
     pub material: Option<Arc<dyn Material + Send + Sync>>,
 }
+
+impl Clone for HitRecord{
+    fn clone(&self) -> Self {
+        HitRecord{
+            material: self.material.as_ref().map(|x|x.clone()),
+            ..*self
+        }
+    }
+}
+
 impl HitRecord {
     pub fn default() -> Self {
         HitRecord {
@@ -37,14 +47,15 @@ impl<T: Hittable> Hittable for Vec<T> {
         let mut hr = HitRecord::default();
         let mut hit_anything = false;
         let mut closest_so_far = t_max;
-        for obj in self.iter().rev() {
+        for obj in self.iter() {
             if obj.hit(ray, t_min, t_max, &mut hr) {
                 hit_anything = true;
                 closest_so_far = hr.t;
                 //*rec = hr.clone();
+                *rec = hr.clone();
             }
         }
-        *rec = hr;
+        
         hit_anything
     }
 }
