@@ -1,4 +1,5 @@
 mod camera;
+mod hitrecord;
 mod material;
 mod ray;
 mod sphere;
@@ -9,8 +10,9 @@ type Color = Vec3<vec3::Color>;
 type Point3 = Vec3<vec3::Point3>;
 
 use camera::*;
+use hitrecord::*;
 use material::*;
-use rand::{Rng, random};
+use rand::{random, Rng};
 use ray::Ray;
 use rayon::prelude::*;
 use sphere::*;
@@ -25,49 +27,103 @@ fn random_range(min: f64, max: f64) -> f64 {
     min + (max - min) * rand::random::<f64>()
 }
 
+fn random_scene() -> Vec<Sphere> {
+    let mut world = Vec::new();
+
+    let ground_material = Arc::new(Lambertian::new((0.5, 0.5, 0.5).into()));
+    world.push(Sphere::new((0, -1000, 0).into(), 1000.0, ground_material));
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat = random::<f64>();
+            let center = Point3::new(
+                a as f64 + 0.9 * random::<f64>(),
+                0.2,
+                b as f64 + 0.9 * random::<f64>(),
+            );
+            let dielectric = Arc::new(Dielectric::new(1.5));
+
+            if (center - (4.0, 0.2, 0.0).into()).len() > 0.9 {
+                let sphere_material: Arc<dyn Material + Send + Sync> = if choose_mat < 0.8 {
+                    Arc::new(Lambertian::new(Color::random_unit() * Color::random_unit()))
+                } else if choose_mat < 0.95 {
+                    let albedo = Color::random_in_range(0.5, 1.0);
+                    let fuzz = random_range(0.0, 0.5);
+                    Arc::new(Metal::new(albedo, fuzz))
+                } else {
+                    dielectric.clone()
+                };
+                world.push(Sphere::new(center, 0.2, sphere_material));
+            }
+        }
+    }
+
+    let material1 = Arc::new(Dielectric::new(1.5));
+    world.push(Sphere::new((0, 1, 0).into(), 1.0, material1));
+    let material2 = Arc::new(Lambertian::new((0.4, 0.2, 0.1).into()));
+    world.push(Sphere::new((-4, 1, 0).into(), 1.0, material2));
+    let material3 = Arc::new(Metal::new((0.7, 0.6, 0.5).into(), 0.0));
+    world.push(Sphere::new((4, 1, 0).into(), 1.0, material3));
+
+    world
+}
+
 fn main() {
     let mut file = BufWriter::with_capacity(8 * 1024 * 1024, File::create("image.ppm").unwrap());
-    const MAX_DEPTH: u32 = 20;
+    const MAX_DEPTH: u32 = 50;
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
     const width: usize = 1024;
     const height: usize = (width as f64 / ASPECT_RATIO) as usize;
-    const samples_per_pixel: u32 = 50;
+    const samples_per_pixel: u32 = 100;
     file.write_fmt(format_args!("P3\n{} {}\n255\n", width, height))
         .unwrap();
 
     //let glass = Arc::new(Dielectric::new(1.5));
-    let mut world: Vec<Sphere> = Vec::new();
+    let mut world = random_scene();
 
-    world.push(Sphere::new(
-        (0., -100.5, -1.).into(),
-        100.0,
-        Arc::new(Lambertian::new((0.8, 0.8, 0.0).into())),
-    ));
+    // world.push(Sphere::new(
+    //     (0., -100.5, -1.).into(),
+    //     100.0,
+    //     Arc::new(Lambertian::new((0.8, 0.8, 0.0).into())),
+    // ));
 
-    world.push(Sphere::new(
-        (1, 0, -1).into(),
-        0.5,
-        Arc::new(Metal::new((0.8, 0.6, 0.2).into(), 0.3)),
-    ));
+    // world.push(Sphere::new(
+    //     (1, 0, -1).into(),
+    //     0.5,
+    //     Arc::new(Metal::new((0.8, 0.6, 0.2).into(), 0.3)),
+    // ));
 
-    world.push(Sphere::new(
-        (-1, 0, -1).into(),
-        0.5,
-        Arc::new(Dielectric::new(1.5)),
-    ));
-    world.push(Sphere::new(
-        (-1, 0, -1).into(),
-        -0.45,
-        Arc::new(Dielectric::new(1.5)),
-    ));
+    // world.push(Sphere::new(
+    //     (-1, 0, -1).into(),
+    //     0.5,
+    //     Arc::new(Dielectric::new(1.5)),
+    // ));
+    // world.push(Sphere::new(
+    //     (-1, 0, -1).into(),
+    //     -0.45,
+    //     Arc::new(Dielectric::new(1.5)),
+    // ));
 
-    world.push(Sphere::new(
-        (0.0, 0.0, -1.0).into(),
-        0.5,
-        Arc::new(Lambertian::new((0.1, 0.2, 0.5).into())),
-    ));
+    // world.push(Sphere::new(
+    //     (0.0, 0.0, -1.0).into(),
+    //     0.5,
+    //     Arc::new(Lambertian::new((0.1, 0.2, 0.5).into())),
+    // ));
 
-    let cam = Camera::new();
+    let lookfrom: Point3 = (13, 2, 3).into();
+    let lookat: Point3 = (0, 0, 0).into();
+    let vup: Point3 = (0, 1, 0).into();
+    let dist_to_focus = 10.0;
+    let aperture = 0.1;
+    let cam = Camera::new(
+        lookfrom,
+        lookat,
+        vup,
+        Degrees::new(20.0),
+        ASPECT_RATIO,
+        aperture,
+        dist_to_focus,
+    );
     // for j in (0..height).into_iter().rev() {
     //     if j % 50 == 0 {
     //         println!("Scanlines remaining: {:03}", j);

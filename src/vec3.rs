@@ -258,26 +258,25 @@ where
         let r_out_perp = -(1.0 - r_out_parallel.len_squared()).sqrt() * (*n);
         r_out_parallel + r_out_perp
     }
+    pub fn random_in_unit_disk() -> Vec3<T> {
+        loop {
+            let p = Vec3::new(random_range(-1., 1.), random_range(-1., 1.), 0.0);
+            if p.len_squared() >= 1.0 {
+            } else {
+                return p;
+            }
+        }
+    }
 }
 
 impl Vec3<Color> {
     pub fn as_point3(self) -> Vec3<Point3> {
-        Vec3 {
-            marker: PhantomData,
-            x: self.x,
-            y: self.y,
-            z: self.z,
-        }
+        unsafe { std::mem::transmute(self) }
     }
 }
 impl Vec3<Point3> {
     pub fn as_color(self) -> Vec3<Color> {
-        Vec3 {
-            marker: PhantomData,
-            x: self.x,
-            y: self.y,
-            z: self.z,
-        }
+        unsafe { std::mem::transmute(self) }
     }
 }
 
