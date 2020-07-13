@@ -25,7 +25,7 @@ impl Material for Lambertian {
         attenuation: &mut Color,
         scattered: &mut Ray,
     ) -> bool {
-        let scatter_direction = rec.normal + Vec3::random();
+        let scatter_direction = rec.normal + Vec3::random_unit();
         *scattered = Ray::new(rec.p, scatter_direction);
         *attenuation = self.albedo;
         true
