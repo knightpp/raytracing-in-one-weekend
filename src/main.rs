@@ -23,8 +23,24 @@ use std::sync::Arc;
 use traits::*;
 use vec3::Vec3;
 
-fn random_range(min: f64, max: f64) -> f64 {
-    min + (max - min) * rand::random::<f64>()
+
+fn ray_color(ray: &Ray, world: &impl Hittable, depth: u32) -> Color {
+    if depth <= 0 {
+        return Color::default();
+    }
+    let mut rec = HitRecord::default();
+    if world.hit(ray, 0.001, f64::INFINITY, &mut rec) {
+        let mut scattered = Ray::default();
+        let mut attenuation = Color::default();
+        let m = rec.material.as_ref().unwrap().clone();
+        if m.scatter(ray, &mut rec, &mut attenuation, &mut scattered) {
+            return attenuation * ray_color(&scattered, world, depth - 1);
+        }
+        return Color::zeroed();
+    }
+    let unit_dir = ray.direction().unit();
+    let t = 0.5 * (unit_dir.y + 1.0);
+    ((1.0 - t) * Color::new(1.0, 1.0, 1.0)) + (t * Color::new(0.5, 0.7, 1.0))
 }
 
 fn random_scene() -> Vec<Sphere> {
@@ -72,43 +88,13 @@ fn main() {
     let mut file = BufWriter::with_capacity(8 * 1024 * 1024, File::create("image.ppm").unwrap());
     const MAX_DEPTH: u32 = 50;
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    const width: usize = 1024;
-    const height: usize = (width as f64 / ASPECT_RATIO) as usize;
-    const samples_per_pixel: u32 = 100;
-    file.write_fmt(format_args!("P3\n{} {}\n255\n", width, height))
+    const WIDTH: usize = 1200;
+    const HEIGHT: usize = (WIDTH as f64 / ASPECT_RATIO) as usize;
+    const SAMPLES_PER_PIXEL: u32 = 10;
+    file.write_fmt(format_args!("P3\n{} {}\n255\n", WIDTH, HEIGHT))
         .unwrap();
 
-    //let glass = Arc::new(Dielectric::new(1.5));
-    let mut world = random_scene();
-
-    // world.push(Sphere::new(
-    //     (0., -100.5, -1.).into(),
-    //     100.0,
-    //     Arc::new(Lambertian::new((0.8, 0.8, 0.0).into())),
-    // ));
-
-    // world.push(Sphere::new(
-    //     (1, 0, -1).into(),
-    //     0.5,
-    //     Arc::new(Metal::new((0.8, 0.6, 0.2).into(), 0.3)),
-    // ));
-
-    // world.push(Sphere::new(
-    //     (-1, 0, -1).into(),
-    //     0.5,
-    //     Arc::new(Dielectric::new(1.5)),
-    // ));
-    // world.push(Sphere::new(
-    //     (-1, 0, -1).into(),
-    //     -0.45,
-    //     Arc::new(Dielectric::new(1.5)),
-    // ));
-
-    // world.push(Sphere::new(
-    //     (0.0, 0.0, -1.0).into(),
-    //     0.5,
-    //     Arc::new(Lambertian::new((0.1, 0.2, 0.5).into())),
-    // ));
+    let world = random_scene();
 
     let lookfrom: Point3 = (13, 2, 3).into();
     let lookat: Point3 = (0, 0, 0).into();
@@ -141,23 +127,23 @@ fn main() {
     //         write_color(&mut file, &pixel_color, samples_per_pixel);
     //     }
     // }
-    let results = (0..height)
+    let results = (0..HEIGHT)
         .into_par_iter()
         .rev()
         .map(|j| {
             //eprintln!("Scanlines remaining: {:03}", j);
             let mut rng = rand::thread_rng();
-            let mut v = Vec::with_capacity(samples_per_pixel as usize * width);
-            for i in 0..width {
+            let mut v = Vec::with_capacity(SAMPLES_PER_PIXEL as usize * WIDTH);
+            for i in 0..WIDTH {
                 let mut pixel_color = Color::zeroed();
-                for _ in 0..samples_per_pixel {
-                    let u = (i as f64 + rng.gen::<f64>()) / (width - 1) as f64;
-                    let v = (j as f64 + rng.gen::<f64>()) / (height - 1) as f64;
+                for _ in 0..SAMPLES_PER_PIXEL {
+                    let u = (i as f64 + rng.gen::<f64>()) / (WIDTH - 1) as f64;
+                    let v = (j as f64 + rng.gen::<f64>()) / (HEIGHT - 1) as f64;
                     let ray = cam.ray(u, v);
 
                     pixel_color += ray_color(&ray, &world, MAX_DEPTH);
                 }
-                v.push(process_color(pixel_color, samples_per_pixel));
+                v.push(process_color(pixel_color, SAMPLES_PER_PIXEL));
             }
             v
         })
@@ -204,31 +190,6 @@ fn write_color(stream: &mut impl Write, pixel: &Color, samples_per_pixel: u32) {
         .unwrap();
 }
 
-fn ray_color(ray: &Ray, world: &impl Hittable, depth: u32) -> Color {
-    if depth <= 0 {
-        return Color::default();
-    }
-    let mut rec = HitRecord::default();
-    if world.hit(ray, 0.001, f64::INFINITY, &mut rec) {
-        let mut scattered = Ray::default();
-        let mut attenuation = Color::default();
-        let m = rec.material.as_ref().map(|x| x.clone()).unwrap();
-        if m.scatter(ray, &mut rec, &mut attenuation, &mut scattered) {
-            return attenuation * ray_color(&scattered, world, depth - 1);
-        }
-        return Color::zeroed();
-    }
-    let unit_dir = ray.direction().unit();
-    let t = 0.5 * (unit_dir.y + 1.0);
-    ((1.0 - t) * Color::new(1.0, 1.0, 1.0)) + (t * Color::new(0.5, 0.7, 1.0))
-}
-
-fn schlick(cosine: f64, ref_idx: f64) -> f64 {
-    let r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
-    let r0 = r0 * r0;
-    r0 + ((1.0 - r0) * (1.0 - cosine).powf(5.0))
-}
-
 fn clamp<T>(val: T, min: T, max: T) -> T
 where
     T: Copy + std::cmp::PartialOrd,
@@ -240,4 +201,7 @@ where
     } else {
         val
     }
+}
+fn random_range(min: f64, max: f64) -> f64 {
+    min + (max - min) * rand::random::<f64>()
 }

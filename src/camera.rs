@@ -1,5 +1,4 @@
 use super::*;
-use std::ops::Mul;
 
 pub struct Camera {
     origin: Point3,

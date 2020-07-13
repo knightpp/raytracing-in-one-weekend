@@ -1,4 +1,11 @@
 use super::*;
+
+fn schlick(cosine: f64, ref_idx: f64) -> f64 {
+    let r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+    let r0 = r0 * r0;
+    r0 + ((1.0 - r0) * (1.0 - cosine).powf(5.0))
+}
+
 pub trait Material {
     fn scatter(
         &self,
@@ -20,7 +27,7 @@ impl Lambertian {
 impl Material for Lambertian {
     fn scatter(
         &self,
-        r_in: &Ray,
+        _: &Ray,
         rec: &mut HitRecord,
         attenuation: &mut Color,
         scattered: &mut Ray,
