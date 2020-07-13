@@ -44,6 +44,7 @@ fn ray_color(ray: &Ray, world: &impl Hittable, depth: u32) -> Color {
 }
 
 fn random_scene() -> Vec<Sphere> {
+    let mut rng1 = rand::thread_rng();
     let mut world = Vec::new();
 
     let ground_material = Arc::new(Lambertian::new((0.5, 0.5, 0.5).into()));
@@ -51,11 +52,11 @@ fn random_scene() -> Vec<Sphere> {
 
     for a in -11..11 {
         for b in -11..11 {
-            let choose_mat = random::<f64>();
+            let choose_mat = unsafe{rng.unwrap().gen::<f64>()};
             let center = Point3::new(
-                a as f64 + 0.9 * random::<f64>(),
+                a as f64 + 0.9 * unsafe{rng.unwrap().gen::<f64>()},
                 0.2,
-                b as f64 + 0.9 * random::<f64>(),
+                b as f64 + 0.9 * unsafe{rng.unwrap().gen::<f64>()},
             );
             let dielectric = Arc::new(Dielectric::new(1.5));
 
@@ -85,14 +86,20 @@ fn random_scene() -> Vec<Sphere> {
 }
 
 fn main() {
-    let mut file = BufWriter::with_capacity(8 * 1024 * 1024, File::create("image.ppm").unwrap());
+    unsafe{
+        rng = Some(rand::thread_rng());
+    }
+    //let mut file = BufWriter::with_capacity(8 * 1024 * 1024, File::create("image.ppm").unwrap());
     const MAX_DEPTH: u32 = 50;
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
     const WIDTH: usize = 1200;
     const HEIGHT: usize = (WIDTH as f64 / ASPECT_RATIO) as usize;
     const SAMPLES_PER_PIXEL: u32 = 10;
-    file.write_fmt(format_args!("P3\n{} {}\n255\n", WIDTH, HEIGHT))
-        .unwrap();
+    //file.write_fmt(format_args!("P3\n{} {}\n255\n", WIDTH, HEIGHT))
+    //    .unwrap();
+    print!("P3\n{} {}\n255\n", WIDTH, HEIGHT);
+
+    let mut rng1 = rand::thread_rng();
 
     let world = random_scene();
 
@@ -110,49 +117,49 @@ fn main() {
         aperture,
         dist_to_focus,
     );
-    // for j in (0..height).into_iter().rev() {
-    //     if j % 50 == 0 {
-    //         println!("Scanlines remaining: {:03}", j);
-    //     }
-    //     for i in 0..width {
-    //         let mut pixel_color = Color::zeroed();
-    //         for s in 0..samples_per_pixel {
-    //             let u = (i as f64 + random::<f64>()) / (width - 1) as f64;
-    //             let v = (j as f64 + random::<f64>()) / (height - 1) as f64;
-    //             let ray = cam.ray(u, v);
+    for j in (0..HEIGHT).into_iter().rev() {
+        //if j % 50 == 0 {
+            eprintln!("Scanlines remaining:   {}", j);
+        //}
+        for i in 0..WIDTH {
+            let mut pixel_color = Color::zeroed();
+            for _ in 0..SAMPLES_PER_PIXEL {
+                let u = (i as f64 + unsafe{rng.unwrap().gen::<f64>()}) / (WIDTH - 1) as f64;
+                let v = (j as f64 + unsafe{rng.unwrap().gen::<f64>()}) / (HEIGHT - 1) as f64;
+                let ray = cam.ray(u, v);
 
-    //             pixel_color += ray_color(&ray, &world, MAX_DEPTH);
-    //         }
-
-    //         write_color(&mut file, &pixel_color, samples_per_pixel);
-    //     }
-    // }
-    let results = (0..HEIGHT)
-        .into_par_iter()
-        .rev()
-        .map(|j| {
-            //eprintln!("Scanlines remaining: {:03}", j);
-            let mut rng = rand::thread_rng();
-            let mut v = Vec::with_capacity(SAMPLES_PER_PIXEL as usize * WIDTH);
-            for i in 0..WIDTH {
-                let mut pixel_color = Color::zeroed();
-                for _ in 0..SAMPLES_PER_PIXEL {
-                    let u = (i as f64 + rng.gen::<f64>()) / (WIDTH - 1) as f64;
-                    let v = (j as f64 + rng.gen::<f64>()) / (HEIGHT - 1) as f64;
-                    let ray = cam.ray(u, v);
-
-                    pixel_color += ray_color(&ray, &world, MAX_DEPTH);
-                }
-                v.push(process_color(pixel_color, SAMPLES_PER_PIXEL));
+                pixel_color += ray_color(&ray, &world, MAX_DEPTH);
             }
-            v
-        })
-        .flatten()
-        .collect::<Vec<(_, _, _)>>();
-    for p in results.iter() {
-        file.write_fmt(format_args!("{} {} {}\n", p.0, p.1, p.2))
-            .unwrap();
+            print_color(pixel_color, SAMPLES_PER_PIXEL);
+            //write_color(&mut file, pixel_color, SAMPLES_PER_PIXEL);
+        }
     }
+    // let results = (0..HEIGHT)
+    //     .into_par_iter()
+    //     .rev()
+    //     .map(|j| {
+    //         //eprintln!("Scanlines remaining: {:03}", j);
+    //         let mut rng = rand::thread_rng();
+    //         let mut v = Vec::with_capacity(SAMPLES_PER_PIXEL as usize * WIDTH);
+    //         for i in 0..WIDTH {
+    //             let mut pixel_color = Color::zeroed();
+    //             for _ in 0..SAMPLES_PER_PIXEL {
+    //                 let u = (i as f64 + rng.gen::<f64>()) / (WIDTH - 1) as f64;
+    //                 let v = (j as f64 + rng.gen::<f64>()) / (HEIGHT - 1) as f64;
+    //                 let ray = cam.ray(u, v);
+
+    //                 pixel_color += ray_color(&ray, &world, MAX_DEPTH);
+    //             }
+    //             v.push(process_color(pixel_color, SAMPLES_PER_PIXEL));
+    //         }
+    //         v
+    //     })
+    //     .flatten()
+    //     .collect::<Vec<(_, _, _)>>();
+    // for p in results.iter() {
+    //     file.write_fmt(format_args!("{} {} {}\n", p.0, p.1, p.2))
+    //         .unwrap();
+    // }
 }
 
 fn process_color(pixel: Color, samples_per_pixel: u32) -> (u32, u32, u32) {
@@ -171,19 +178,14 @@ fn process_color(pixel: Color, samples_per_pixel: u32) -> (u32, u32, u32) {
     (ir, ig, ib)
 }
 
-fn write_color(stream: &mut impl Write, pixel: &Color, samples_per_pixel: u32) {
-    let mut r = pixel.x;
-    let mut g = pixel.y;
-    let mut b = pixel.z;
+fn print_color(pixel : Color, samples_per_pixel: u32){
+    let (ir ,ig, ib) = process_color(pixel, samples_per_pixel);
 
-    let scale = 1.0 / samples_per_pixel as f64;
-    r = (scale * r).sqrt();
-    g = (scale * g).sqrt();
-    b = (scale * b).sqrt();
+    print!("{} {} {}\n", ir, ig, ib);
+}
 
-    let ir = (clamp(r, 0.0, 0.999) * 256.0) as u32;
-    let ig = (clamp(g, 0.0, 0.999) * 256.0) as u32;
-    let ib = (clamp(b, 0.0, 0.999) * 256.0) as u32;
+fn write_color(stream: &mut impl Write, pixel: Color, samples_per_pixel: u32) {
+    let (ir ,ig, ib) = process_color(pixel, samples_per_pixel);
 
     stream
         .write_fmt(format_args!("{} {} {}\n", ir, ig, ib))
@@ -202,6 +204,8 @@ where
         val
     }
 }
+static mut rng : Option<rand::rngs::ThreadRng> = None;
 fn random_range(min: f64, max: f64) -> f64 {
-    min + (max - min) * rand::random::<f64>()
+    min + (max - min) * unsafe{rng.unwrap().gen::<f64>()}
+    //min + (max - min) * rand::random::<f64>()
 }
