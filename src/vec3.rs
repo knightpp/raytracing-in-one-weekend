@@ -212,6 +212,15 @@ where
         (self.x * self.x) + (self.y * self.y) + (self.z * self.z)
     }
 
+    pub fn random() -> Self {
+        Vec3 {
+            x: random(),
+            y: random(),
+            z: random(),
+            marker: PhantomData,
+        }
+    }
+
     pub fn random_unit() -> Self {
         let a: f64 = random_range(0.0, 2.0 * std::f64::consts::PI);
         let z: f64 = random_range(-1.0, 1.0);
