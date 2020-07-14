@@ -14,15 +14,10 @@ use hitrecord::*;
 use material::*;
 use rand::{random, Rng};
 use ray::Ray;
-use rayon::prelude::*;
 use sphere::*;
-use std::fs::File;
-use std::io::BufWriter;
-use std::io::Write;
 use std::sync::Arc;
 use traits::*;
 use vec3::Vec3;
-
 
 fn ray_color(ray: &Ray, world: &impl Hittable, depth: u32) -> Color {
     if depth <= 0 {
@@ -44,7 +39,6 @@ fn ray_color(ray: &Ray, world: &impl Hittable, depth: u32) -> Color {
 }
 
 fn random_scene() -> Vec<Sphere> {
-    let mut rng1 = rand::thread_rng();
     let mut world = Vec::new();
 
     let ground_material = Arc::new(Lambertian::new((0.5, 0.5, 0.5).into()));
@@ -52,17 +46,17 @@ fn random_scene() -> Vec<Sphere> {
 
     for a in -11..11 {
         for b in -11..11 {
-            let choose_mat = unsafe{rng.unwrap().gen::<f64>()};
+            let choose_mat = unsafe { rng.unwrap().gen::<f64>() };
             let center = Point3::new(
-                a as f64 + 0.9 * unsafe{rng.unwrap().gen::<f64>()},
+                a as f64 + 0.9 * unsafe { rng.unwrap().gen::<f64>() },
                 0.2,
-                b as f64 + 0.9 * unsafe{rng.unwrap().gen::<f64>()},
+                b as f64 + 0.9 * unsafe { rng.unwrap().gen::<f64>() },
             );
             let dielectric = Arc::new(Dielectric::new(1.5));
 
             if (center - (4.0, 0.2, 0.0).into()).len() > 0.9 {
                 let sphere_material: Arc<dyn Material + Send + Sync> = if choose_mat < 0.8 {
-                    Arc::new(Lambertian::new(Color::random_unit() * Color::random_unit()))
+                    Arc::new(Lambertian::new(Color::random() * Color::random()))
                 } else if choose_mat < 0.95 {
                     let albedo = Color::random_in_range(0.5, 1.0);
                     let fuzz = random_range(0.0, 0.5);
@@ -86,20 +80,16 @@ fn random_scene() -> Vec<Sphere> {
 }
 
 fn main() {
-    unsafe{
+    unsafe {
         rng = Some(rand::thread_rng());
     }
-    //let mut file = BufWriter::with_capacity(8 * 1024 * 1024, File::create("image.ppm").unwrap());
     const MAX_DEPTH: u32 = 50;
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
     const WIDTH: usize = 1200;
     const HEIGHT: usize = (WIDTH as f64 / ASPECT_RATIO) as usize;
     const SAMPLES_PER_PIXEL: u32 = 10;
-    //file.write_fmt(format_args!("P3\n{} {}\n255\n", WIDTH, HEIGHT))
-    //    .unwrap();
-    print!("P3\n{} {}\n255\n", WIDTH, HEIGHT);
 
-    let mut rng1 = rand::thread_rng();
+    print!("P3\n{} {}\n255\n", WIDTH, HEIGHT);
 
     let world = random_scene();
 
@@ -118,48 +108,19 @@ fn main() {
         dist_to_focus,
     );
     for j in (0..HEIGHT).into_iter().rev() {
-        //if j % 50 == 0 {
-            eprintln!("Scanlines remaining:   {}", j);
-        //}
+        eprintln!("Scanlines remaining:   {}", j);
         for i in 0..WIDTH {
             let mut pixel_color = Color::zeroed();
             for _ in 0..SAMPLES_PER_PIXEL {
-                let u = (i as f64 + unsafe{rng.unwrap().gen::<f64>()}) / (WIDTH - 1) as f64;
-                let v = (j as f64 + unsafe{rng.unwrap().gen::<f64>()}) / (HEIGHT - 1) as f64;
+                let u = (i as f64 + unsafe { rng.unwrap().gen::<f64>() }) / (WIDTH - 1) as f64;
+                let v = (j as f64 + unsafe { rng.unwrap().gen::<f64>() }) / (HEIGHT - 1) as f64;
                 let ray = cam.ray(u, v);
 
                 pixel_color += ray_color(&ray, &world, MAX_DEPTH);
             }
             print_color(pixel_color, SAMPLES_PER_PIXEL);
-            //write_color(&mut file, pixel_color, SAMPLES_PER_PIXEL);
         }
     }
-    // let results = (0..HEIGHT)
-    //     .into_par_iter()
-    //     .rev()
-    //     .map(|j| {
-    //         //eprintln!("Scanlines remaining: {:03}", j);
-    //         let mut rng = rand::thread_rng();
-    //         let mut v = Vec::with_capacity(SAMPLES_PER_PIXEL as usize * WIDTH);
-    //         for i in 0..WIDTH {
-    //             let mut pixel_color = Color::zeroed();
-    //             for _ in 0..SAMPLES_PER_PIXEL {
-    //                 let u = (i as f64 + rng.gen::<f64>()) / (WIDTH - 1) as f64;
-    //                 let v = (j as f64 + rng.gen::<f64>()) / (HEIGHT - 1) as f64;
-    //                 let ray = cam.ray(u, v);
-
-    //                 pixel_color += ray_color(&ray, &world, MAX_DEPTH);
-    //             }
-    //             v.push(process_color(pixel_color, SAMPLES_PER_PIXEL));
-    //         }
-    //         v
-    //     })
-    //     .flatten()
-    //     .collect::<Vec<(_, _, _)>>();
-    // for p in results.iter() {
-    //     file.write_fmt(format_args!("{} {} {}\n", p.0, p.1, p.2))
-    //         .unwrap();
-    // }
 }
 
 fn process_color(pixel: Color, samples_per_pixel: u32) -> (u32, u32, u32) {
@@ -178,18 +139,10 @@ fn process_color(pixel: Color, samples_per_pixel: u32) -> (u32, u32, u32) {
     (ir, ig, ib)
 }
 
-fn print_color(pixel : Color, samples_per_pixel: u32){
-    let (ir ,ig, ib) = process_color(pixel, samples_per_pixel);
+fn print_color(pixel: Color, samples_per_pixel: u32) {
+    let (ir, ig, ib) = process_color(pixel, samples_per_pixel);
 
     print!("{} {} {}\n", ir, ig, ib);
-}
-
-fn write_color(stream: &mut impl Write, pixel: Color, samples_per_pixel: u32) {
-    let (ir ,ig, ib) = process_color(pixel, samples_per_pixel);
-
-    stream
-        .write_fmt(format_args!("{} {} {}\n", ir, ig, ib))
-        .unwrap();
 }
 
 fn clamp<T>(val: T, min: T, max: T) -> T
@@ -204,8 +157,7 @@ where
         val
     }
 }
-static mut rng : Option<rand::rngs::ThreadRng> = None;
+static mut rng: Option<rand::rngs::ThreadRng> = None;
 fn random_range(min: f64, max: f64) -> f64 {
-    min + (max - min) * unsafe{rng.unwrap().gen::<f64>()}
-    //min + (max - min) * rand::random::<f64>()
+    min + (max - min) * unsafe { rng.unwrap().gen::<f64>() }
 }
