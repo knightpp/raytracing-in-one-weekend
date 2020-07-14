@@ -212,6 +212,15 @@ where
         (self.x * self.x) + (self.y * self.y) + (self.z * self.z)
     }
 
+    pub fn random() -> Self {
+        Vec3 {
+            x: random(),
+            y: random(),
+            z: random(),
+            marker: PhantomData,
+        }
+    }
+
     pub fn random_unit() -> Self {
         let a: f64 = random_range(0.0, 2.0 * std::f64::consts::PI);
         let z: f64 = random_range(-1.0, 1.0);
@@ -294,23 +303,3 @@ impl ExpressibleInThree for Color {}
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Point3();
 impl ExpressibleInThree for Point3 {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    // #[test]
-    // fn dot() {
-    //     let v = Vec3<Point3>::new(-6., 8., 0.);
-    //     let normal = Point3::new(5., 12., 0.);
-    //     let product = v.dot(&normal);
-    //     assert_eq!(product, 66.0);
-    // }
-
-    // #[test]
-    // fn refract() {
-    //     let perp = Point3::new(1., 1., 0.);
-    //     let normal = Point3::new(1., 0., 0.);
-    //     let res = perp.refract(&normal, 1.5);
-    //     eprintln!("{:?}", res);
-    // }
-}
